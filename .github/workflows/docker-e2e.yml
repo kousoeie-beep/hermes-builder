@@ -1,0 +1,37 @@
+name: Docker E2E
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  full-install:
+    name: ${{ matrix.base }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - base: ubuntu-24.04
+            image: ubuntu:24.04
+          - base: debian-bookworm
+            image: debian:bookworm-slim
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build clean Linux image
+        run: |
+          docker build \
+            --build-arg "BASE_IMAGE=${{ matrix.image }}" \
+            --tag "hermes-builder-e2e:${{ matrix.base }}" \
+            --file tests/docker/Dockerfile \
+            .
+      - name: Install official Hermes and apply Builder twice
+        run: |
+          docker run --rm \
+            --env "HERMES_TEST_BASE=${{ matrix.image }}" \
+            "hermes-builder-e2e:${{ matrix.base }}"

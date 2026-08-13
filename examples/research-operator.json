@@ -1,0 +1,15 @@
+{
+  "profile_name": "research-operator",
+  "display_name": "Research Operator",
+  "purpose": "複数ソースを調査し、根拠つきのレポートを作り、承認後に定期共有する",
+  "use_cases": ["research", "operations"],
+  "autonomy": "scheduled_review",
+  "access_scope": "trusted_team",
+  "deployment": "always_on",
+  "gateways": ["slack", "teams"],
+  "integrations": ["github", "google_workspace", "linear"],
+  "provider_mode": "decide_later",
+  "workspace": "~/work",
+  "language": "ja",
+  "persona_style": "collaborative"
+}
