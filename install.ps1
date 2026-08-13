@@ -7,7 +7,7 @@ param(
     [string]$HermesRef = $(if ($env:HERMES_REF) { $env:HERMES_REF } else { "v2026.8.3" }),
     [string]$HermesCommit = $(if ($env:HERMES_COMMIT) { $env:HERMES_COMMIT } else { "" }),
     [string]$BuilderRepo = $(if ($env:HERMES_BUILDER_REPO) { $env:HERMES_BUILDER_REPO } else { "kousoeie-beep/hermes-builder" }),
-    [string]$BuilderRef = $(if ($env:HERMES_BUILDER_REF) { $env:HERMES_BUILDER_REF } else { "v0.1.0" })
+    [string]$BuilderRef = $(if ($env:HERMES_BUILDER_REF) { $env:HERMES_BUILDER_REF } else { "v0.1.1" })
 )
 
 $ErrorActionPreference = "Stop"
@@ -58,7 +58,7 @@ if ($HermesCommit -and $HermesCommit -notmatch '^[0-9a-fA-F]{40}$') {
     throw "HermesCommit must be a full 40-character commit SHA: $HermesCommit"
 }
 
-Write-Host "Hermes Builder v0.1.0"
+Write-Host "Hermes Builder v0.1.1"
 Write-Host "  Hermes ref: $HermesRef"
 Write-Host "  Hermes commit: $(if ($HermesCommit) { $HermesCommit } else { '<resolve during install>' })"
 Write-Host "  Builder:    $BuilderRepo@$BuilderRef"
@@ -118,7 +118,7 @@ if (-not (Test-Path $python)) {
 }
 
 $wrapper = Join-Path $binDir "hermes-builder.cmd"
-$wrapperText = "@echo off`r`nchcp 65001 >nul`r`nset `"PYTHONPATH=$builderHome\src`"`r`n`"$python`" -m hermes_builder %*`r`n"
+$wrapperText = "@echo off`r`nchcp 65001 >nul`r`nset `"PYTHONUTF8=1`"`r`nset `"PYTHONPATH=$builderHome\src`"`r`n`"$python`" -m hermes_builder %*`r`n"
 $utf8WithoutBom = [Text.UTF8Encoding]::new($false)
 [IO.File]::WriteAllText($wrapper, $wrapperText, $utf8WithoutBom)
 
@@ -133,5 +133,6 @@ $arguments = @("-m", "hermes_builder", "setup", "--yes")
 if ($Answers) { $arguments += @("--answers", $Answers) }
 if ($NonInteractive) { $arguments += "--non-interactive" }
 $env:PYTHONPATH = "$builderHome\src"
+$env:PYTHONUTF8 = "1"
 & $python @arguments
 exit $LASTEXITCODE

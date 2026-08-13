@@ -22,6 +22,7 @@ from hermes_builder.planner import build_plan
 
 
 class ExecutorTest(unittest.TestCase):
+    @unittest.skipIf(os.name == "nt", "POSIX fake executable is covered by shell E2E")
     def test_noninteractive_apply_uses_fake_hermes_and_writes_soul(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -92,7 +93,8 @@ class ExecutorTest(unittest.TestCase):
             saved = json.loads(config_path.read_text(encoding="utf-8"))
             self.assertEqual(saved["agent"]["disabled_toolsets"], ["terminal", "file"])
             self.assertEqual(saved["platform_toolsets"]["teams"], ["clarify", "web"])
-            self.assertEqual(stat.S_IMODE(config_path.stat().st_mode), 0o600)
+            if os.name != "nt":
+                self.assertEqual(stat.S_IMODE(config_path.stat().st_mode), 0o600)
 
     def test_required_security_audit_failure_stops_apply(self) -> None:
         command = CommandSpec(
@@ -179,7 +181,8 @@ class ExecutorTest(unittest.TestCase):
             self.assertEqual(backups[0].read_text(encoding="utf-8"), "original")
             self.assertIn("first replacement", backups[1].read_text(encoding="utf-8"))
             self.assertIn("second replacement", soul.read_text(encoding="utf-8"))
-            self.assertEqual(stat.S_IMODE(soul.stat().st_mode), 0o600)
+            if os.name != "nt":
+                self.assertEqual(stat.S_IMODE(soul.stat().st_mode), 0o600)
 
     def test_soul_replacement_failure_keeps_original_content(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

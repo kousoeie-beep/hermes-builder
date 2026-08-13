@@ -4,20 +4,20 @@
 
 Hermes本体の導入だけでなく、専用profile、SOUL、toolsets、gateway、MCP、安全設定、常駐化、疎通確認までを1本のフローにまとめます。
 
-> 現在のreleaseはv0.1.0です。installerとBuilder本体を同じtagへ固定しています。
+> 現在のreleaseはv0.1.1です。installerとBuilder本体を同じtagへ固定しています。
 
 ## Quick start
 
 macOS / Linux / WSL2:
 
 ```bash
-curl -fsSL --retry 5 --retry-delay 2 https://raw.githubusercontent.com/kousoeie-beep/hermes-builder/v0.1.0/install.sh | bash
+curl -fsSL --retry 5 --retry-delay 2 https://raw.githubusercontent.com/kousoeie-beep/hermes-builder/v0.1.1/install.sh | bash
 ```
 
 Windows PowerShell:
 
 ```powershell
-iex (irm https://raw.githubusercontent.com/kousoeie-beep/hermes-builder/v0.1.0/install.ps1)
+iex (irm https://raw.githubusercontent.com/kousoeie-beep/hermes-builder/v0.1.1/install.ps1)
 ```
 
 実行すると、次の順番で進みます。
@@ -198,12 +198,12 @@ Environment variables:
 | `HERMES_REF` | `v2026.8.3` | Hermesのtag/commit pin |
 | `HERMES_COMMIT` | releaseの固定SHA | Hermesの厳密なcommit pin |
 | `HERMES_BUILDER_REPO` | `kousoeie-beep/hermes-builder` | Builder repository |
-| `HERMES_BUILDER_REF` | `v0.1.0` | Builder branch/tag |
+| `HERMES_BUILDER_REF` | `v0.1.1` | Builder branch/tag |
 | `HERMES_BUILDER_HOME` | `~/.local/share/hermes-builder` | Builder install先 |
 | `HERMES_BUILDER_STATE_HOME` | `~/.config/hermes-builder` | plan等のstate保存先 |
 | `HERMES_BUILDER_BIN_DIR` | `~/.local/bin` | command install先 |
 
-installer自身と、そこから取得するBuilder本体を同じ`v0.1.0` tagへ固定しています。更新時は新しいrelease tagを発行し、両方を同時に切り替えます。
+installer自身と、そこから取得するBuilder本体を同じ`v0.1.1` tagへ固定しています。更新時は新しいrelease tagを発行し、両方を同時に切り替えます。
 
 Hermes本体は`v2026.8.3`のrelease commit `3c27eb6234bf91b8ceee9e9071591b31e9b148cb`へ固定します。POSIX版とPowerShell版の両方が公式installer自体を40文字のcommit SHAから取得し、そのSHAを公式installerへ渡します。そのため、同じtagが将来別のcommitを指しても導入内容は変わりません。別versionで`HERMES_COMMIT`を省略した場合は、`HERMES_REF`をGitHub APIでcommit SHAへ解決します。厳密な再現性が必要なら両方を対で指定してください。
 
@@ -249,7 +249,7 @@ macOS、WSL2、WindowsはCI定義を用意していますが、この時点で�
 
 ## Current scope
 
-v0.1.0で行うこと:
+v0.1.1で行うこと:
 
 - macOS / Linux / WSL2 / Windows installer
 - 決定論的ヒアリングとplan生成

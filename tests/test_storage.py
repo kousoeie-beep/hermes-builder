@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import stat
 import tempfile
 import unittest
@@ -55,8 +56,9 @@ class StorageTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "state" / "plans" / "private-agent.json"
             write_plan(build_plan(answers), path)
-            self.assertEqual(stat.S_IMODE(path.parent.stat().st_mode), 0o700)
-            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+            if os.name != "nt":
+                self.assertEqual(stat.S_IMODE(path.parent.stat().st_mode), 0o700)
+                self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
 
     def test_rejects_oversized_plan_before_json_parsing(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

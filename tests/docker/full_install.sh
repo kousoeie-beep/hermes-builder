@@ -19,7 +19,7 @@ assert_install() {
   test "$(stat -c '%a' "$HOME/.hermes/profiles/$profile/config.yaml")" = "600"
   test "$(stat -c '%a' "$HOME/.config/hermes-builder/plans/$profile.json")" = "600"
   grep -q "複数ソースを調査" "$HOME/.hermes/profiles/$profile/SOUL.md"
-  hermes-builder --version | grep -q "0.1.0"
+  hermes-builder --version | grep -q "0.1.1"
   hermes profile show "$profile" >/dev/null
   "$HOME/.hermes/hermes-agent/venv/bin/python" - \
     "$HOME/.hermes/profiles/$profile/config.yaml" <<'PY'

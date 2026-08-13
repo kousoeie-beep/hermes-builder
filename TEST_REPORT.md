@@ -4,13 +4,13 @@
 
 ## 結論
 
-Hermes Builder `v0.1.0`は、Apple Silicon上のクリーンなUbuntu 24.04およびDebian 12コンテナで、Nous Research公式Hermes installerを含む初回構築と2回目の再適用に成功しました。
+Hermes Builder `v0.1.1`は、Apple Silicon上のクリーンなUbuntu 24.04およびDebian 12コンテナで、Nous Research公式Hermes installerを含む初回構築と2回目の再適用に成功しました。
 
 外部サービスのOAuth、Bot登録、公開webhook、API keyを使う疎通確認と、macOS / WSL2 / Windowsでの完全インストールは未検証です。
 
 ## 対象
 
-- Builder: `v0.1.0`
+- Builder: `v0.1.1`
 - Hermes ref: `v2026.8.3`
 - Hermes commit: `3c27eb6234bf91b8ceee9e9071591b31e9b148cb`
 - Docker host: macOS / Apple Silicon / arm64
@@ -83,6 +83,8 @@ Hermes `config set`はJSON風文字列を配列へ変換しないため、旧方
 - answers内の既知secret形式・terminal制御文字を拒否
 - answers 1 MiB、plan 2 MiBの入力上限と過剰nestingのclean error
 - 公式plugin catalogとの差分を再監査し、A2A adapterを追加
+- Windows実行時に`PYTHONUTF8=1`を設定し、日本語・記号出力のlocale依存エラーを防止
+- POSIX permissionとfake executableのテストをOS capabilityに合わせて分離
 
 ## 残る制約と上流リスク
 
