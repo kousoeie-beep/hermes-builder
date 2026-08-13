@@ -39,9 +39,23 @@ class PlannerTest(unittest.TestCase):
         self.assertIn("agent.disabled_toolsets", plan.config_values)
 
     def test_public_gateway_is_minimal(self) -> None:
-        plan = build_plan(answers(access_scope="public"))
+        plan = build_plan(
+            answers(access_scope="public", gateways=("slack", "teams"))
+        )
         self.assertEqual(plan.gateway_toolsets, ["clarify", "skills", "todo", "web"])
         self.assertIn("memory", plan.gateway_denied_toolsets)
+        self.assertEqual(
+            plan.config_values["platform_toolsets.cli"],
+            ["clarify", "skills", "todo", "web"],
+        )
+        for gateway in ("slack", "teams"):
+            self.assertEqual(
+                plan.config_values[f"platform_toolsets.{gateway}"],
+                ["clarify", "no_mcp", "skills", "todo", "web"],
+            )
+        self.assertFalse(
+            any("tools" in command.argv and "enable" in command.argv for command in plan.commands)
+        )
 
     def test_cron_approval_remains_deny(self) -> None:
         plan = build_plan(answers(autonomy="autonomous_limited"))
@@ -63,7 +77,7 @@ class PlannerTest(unittest.TestCase):
         provider = next(command for command in plan.commands if command.category == "provider")
         self.assertEqual(provider.argv[-2:], ("setup", "--portal"))
 
-    def test_plugin_gateway_relies_on_global_policy(self) -> None:
+    def test_shared_plugin_gateway_uses_structured_allowlist(self) -> None:
         plan = build_plan(
             answers(access_scope="trusted_team", gateways=("teams", "line", "simplex"))
         )
@@ -71,11 +85,10 @@ class PlannerTest(unittest.TestCase):
             command for command in plan.commands if "--platform" in command.argv
         ]
         self.assertEqual(per_platform, [])
-        self.assertTrue(any("plugin adapter" in note for note in plan.notes))
         for gateway in ("teams", "line", "simplex"):
             self.assertEqual(
                 plan.config_values[f"platform_toolsets.{gateway}"],
-                plan.gateway_toolsets,
+                sorted([*plan.gateway_toolsets, "no_mcp"]),
             )
 
     def test_disabled_toolsets_remain_a_json_array_value(self) -> None:

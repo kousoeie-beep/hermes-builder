@@ -24,7 +24,11 @@ def _add_apply_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--non-interactive", action="store_true", help="対話ステップをスキップ")
     parser.add_argument("--force-profile", action="store_true", help="既存SOULを退避して更新")
     parser.add_argument("--skip-provider", action="store_true", help="provider wizardを起動しない")
-    parser.add_argument("--skip-gateways", action="store_true", help="gateway設定・検証を行わない")
+    parser.add_argument(
+        "--skip-gateways",
+        action="store_true",
+        help="gatewayの認証wizard・service操作・疎通確認を行わない（安全policyは適用）",
+    )
     parser.add_argument("--skip-mcp", action="store_true", help="MCP pickerを起動しない")
     parser.add_argument("--no-service", action="store_true", help="gatewayを常駐service化しない")
 

@@ -1,0 +1,15 @@
+{
+  "profile_name": "local-operator",
+  "display_name": "Local Operator",
+  "purpose": "ローカルinstallerの再適用を検証する",
+  "use_cases": ["research"],
+  "autonomy": "interactive",
+  "access_scope": "owner",
+  "deployment": "laptop",
+  "gateways": [],
+  "integrations": [],
+  "provider_mode": "decide_later",
+  "workspace": "~/work",
+  "language": "ja",
+  "persona_style": "collaborative"
+}

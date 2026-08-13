@@ -2,19 +2,23 @@ param(
     [switch]$DryRun,
     [switch]$SkipHermes,
     [switch]$NonInteractive,
+    [switch]$SkipProvider,
+    [switch]$SkipGateways,
+    [switch]$SkipMcp,
+    [switch]$NoService,
     [string]$Answers = "",
     [string]$SourceDir = "",
     [string]$HermesRef = $(if ($env:HERMES_REF) { $env:HERMES_REF } else { "v2026.8.3" }),
     [string]$HermesCommit = $(if ($env:HERMES_COMMIT) { $env:HERMES_COMMIT } else { "" }),
     [string]$BuilderRepo = $(if ($env:HERMES_BUILDER_REPO) { $env:HERMES_BUILDER_REPO } else { "kousoeie-beep/hermes-builder" }),
-    [string]$BuilderRef = $(if ($env:HERMES_BUILDER_REF) { $env:HERMES_BUILDER_REF } else { "v0.1.1" })
+    [string]$BuilderRef = $(if ($env:HERMES_BUILDER_REF) { $env:HERMES_BUILDER_REF } else { "v0.1.2" })
 )
 
 $ErrorActionPreference = "Stop"
 $defaultHermesRef = "v2026.8.3"
 $defaultHermesCommit = "3c27eb6234bf91b8ceee9e9071591b31e9b148cb"
 $builderHome = if ($env:HERMES_BUILDER_HOME) { $env:HERMES_BUILDER_HOME } else { "$env:LOCALAPPDATA\hermes-builder\app" }
-$binDir = "$env:LOCALAPPDATA\hermes-builder\bin"
+$binDir = if ($env:HERMES_BUILDER_BIN_DIR) { $env:HERMES_BUILDER_BIN_DIR } else { "$env:LOCALAPPDATA\hermes-builder\bin" }
 $hermesHome = if ($env:HERMES_HOME) { $env:HERMES_HOME } else { "$env:LOCALAPPDATA\hermes" }
 $env:Path = "$hermesHome\bin;$env:Path"
 
@@ -58,7 +62,7 @@ if ($HermesCommit -and $HermesCommit -notmatch '^[0-9a-fA-F]{40}$') {
     throw "HermesCommit must be a full 40-character commit SHA: $HermesCommit"
 }
 
-Write-Host "Hermes Builder v0.1.1"
+Write-Host "Hermes Builder v0.1.2"
 Write-Host "  Hermes ref: $HermesRef"
 Write-Host "  Hermes commit: $(if ($HermesCommit) { $HermesCommit } else { '<resolve during install>' })"
 Write-Host "  Builder:    $BuilderRepo@$BuilderRef"
@@ -132,6 +136,10 @@ $env:Path = "$binDir;$hermesHome\bin;$env:Path"
 $arguments = @("-m", "hermes_builder", "setup", "--yes")
 if ($Answers) { $arguments += @("--answers", $Answers) }
 if ($NonInteractive) { $arguments += "--non-interactive" }
+if ($SkipProvider) { $arguments += "--skip-provider" }
+if ($SkipGateways) { $arguments += "--skip-gateways" }
+if ($SkipMcp) { $arguments += "--skip-mcp" }
+if ($NoService) { $arguments += "--no-service" }
 $env:PYTHONPATH = "$builderHome\src"
 $env:PYTHONUTF8 = "1"
 & $python @arguments

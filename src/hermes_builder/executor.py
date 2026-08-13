@@ -118,6 +118,7 @@ def _write_structured_config(
     values: dict[str, list[str]],
     *,
     dry_run: bool,
+    strict_allowed_toolsets: list[str] | None = None,
 ) -> None:
     if not values:
         return
@@ -125,6 +126,8 @@ def _write_structured_config(
     for key, value in values.items():
         _log(f"→ 配列設定: {key}\n  {value}")
     if dry_run:
+        if strict_allowed_toolsets is not None:
+            _log("→ Hermes registryから共有profileの完全deny listを生成")
         return
 
     # Builderのbootstrap CLIは標準ライブラリのみ。ここはHermes導入後に限り、
@@ -146,6 +149,52 @@ def _write_structured_config(
             raise ExecutionError(f"Hermes configを安全に読めません: {path}: {exc}") from exc
     if not isinstance(config, dict):
         raise ExecutionError(f"Hermes configのrootがmappingではありません: {path}")
+
+    if strict_allowed_toolsets is not None:
+        # Hermesは明示platform listにもdefault-on plugin、recovered toolsetを
+        # 加えるため、共有profileはpinned runtimeの全registryを列挙して最後に
+        # global denyを適用する。registryを検査できない場合は権限を推測せず停止する。
+        try:
+            from toolsets import TOOLSETS  # type: ignore[import-not-found]
+            from hermes_cli.plugins import (  # type: ignore[import-not-found]
+                discover_plugins,
+                get_plugin_toolsets,
+            )
+            from hermes_cli.tools_config import (  # type: ignore[import-not-found]
+                CONFIGURABLE_TOOLSETS,
+            )
+
+            discover_plugins()
+            all_keys = {str(key) for key, _, _ in CONFIGURABLE_TOOLSETS}
+            all_keys.update(str(key) for key, _, _ in get_plugin_toolsets())
+            for key, definition in TOOLSETS.items():
+                if str(key).startswith("hermes-"):
+                    continue
+                if isinstance(definition, dict) and definition.get("includes"):
+                    continue
+                if isinstance(definition, dict) and definition.get("posture"):
+                    continue
+                all_keys.add(str(key))
+        except Exception as exc:
+            raise ExecutionError(
+                "Hermes registryを検査できないため、共有gatewayの最小権限を保証できません。"
+                "Hermesを固定版へ修復してから再実行してください。"
+            ) from exc
+
+        allowed = {str(key) for key in strict_allowed_toolsets}
+        unknown_allowed = sorted(allowed - all_keys)
+        if not all_keys or unknown_allowed:
+            detail = ", ".join(unknown_allowed) if unknown_allowed else "registry is empty"
+            raise ExecutionError(
+                f"Hermes registryとallowlistが一致しません: {detail}。"
+                "権限を推測せずセットアップを停止しました。"
+            )
+        values = dict(values)
+        values["agent.disabled_toolsets"] = sorted(all_keys - allowed)
+        _log(
+            "✓ Hermes registryを検査: "
+            f"{len(all_keys)} toolsets中{len(allowed)}件のみ許可"
+        )
 
     for key, value in values.items():
         _set_nested_mapping(config, key, value)
@@ -222,12 +271,16 @@ def apply_plan(plan: BuildPlan, options: ApplyOptions) -> None:
         key: value
         for key, value in plan.config_values.items()
         if isinstance(value, list)
-        and not (options.skip_gateways and key.startswith("platform_toolsets."))
     }
     _write_structured_config(
         plan.answers.profile_name,
         structured_values,
         dry_run=options.dry_run,
+        strict_allowed_toolsets=(
+            plan.gateway_toolsets
+            if plan.answers.access_scope in {"trusted_team", "public"}
+            else None
+        ),
     )
 
     for command in plan.commands[1:]:

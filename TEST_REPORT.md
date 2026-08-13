@@ -4,13 +4,13 @@
 
 ## 結論
 
-Hermes Builder `v0.1.1`は、Apple Silicon上のクリーンなUbuntu 24.04およびDebian 12コンテナで、Nous Research公式Hermes installerを含む初回構築と2回目の再適用に成功しました。
+Hermes Builder `v0.1.2`は、Apple Silicon上のクリーンなUbuntu 24.04およびDebian 12コンテナで、Nous Research公式Hermes installerを含む初回構築と2回目の再適用に成功しました。
 
 外部サービスのOAuth、Bot登録、公開webhook、API keyを使う疎通確認と、macOS / WSL2 / Windowsでの完全インストールは未検証です。
 
 ## 対象
 
-- Builder: `v0.1.1`
+- Builder: `v0.1.2`
 - Hermes ref: `v2026.8.3`
 - Hermes commit: `3c27eb6234bf91b8ceee9e9071591b31e9b148cb`
 - Docker host: macOS / Apple Silicon / arm64
@@ -35,10 +35,11 @@ Docker E2Eは各OSで次を確認します。
 5. `research-operator` profile、SOUL、planの生成
 6. profileとplanのpermissionが`0600`
 7. CLI / gateway toolset policyの適用
-8. `agent.disabled_toolsets`とplugin型Teams allowlistがYAML文字列ではなく配列であること
-9. `hermes doctor`と`hermes security audit --fail-on critical`
-10. `--skip-hermes`を使ったBuilder再適用
-11. 同一秒を含む連続再適用でのbackup名衝突回避と既存SOUL保護
+8. `agent.disabled_toolsets`とSlack / Teams allowlistがYAML文字列ではなく配列であること
+9. dummy GitHub MCPを追加した後も、Hermes自身のresolverでSlack / Teamsの実効toolsetがplanのallowlistと完全一致すること
+10. `hermes doctor`と`hermes security audit --fail-on critical`
+11. `--skip-hermes`を使ったBuilder再適用
+12. 同一秒を含む連続再適用でのbackup名衝突回避と既存SOUL保護
 
 ## 結果
 
@@ -49,13 +50,13 @@ Docker E2Eは各OSで次を確認します。
 | Exact commit checkout | PASS | PASS |
 | Builder profile / SOUL / plan | PASS | PASS |
 | Permission checks | PASS | PASS |
-| Global deny / Teams allowlistの配列型検査 | PASS | PASS |
+| Registry-based deny / Slack・Teams実効allowlist | PASS | PASS |
 | Doctor / critical audit gate | PASS | PASS |
 | Second apply / backup | PASS | PASS |
 
-Python unit testは41件すべてPASS、fake Hermesを使うローカルinstaller 3連続適用E2EもPASSしています。
+Python unit testは42件すべてPASS、fake Hermesを使うローカルinstaller 3連続適用E2EもPASSしています。
 
-PowerShell版はMicrosoft公式PowerShell 7.5 Docker imageで構文解釈と既定commitのdry-runがPASSしています。これはWindows実機の完全E2Eではありません。
+PowerShell版はMicrosoft公式PowerShell 7.5 Docker imageで構文解釈と既定commitのdry-runがPASSしています。GitHub ActionsのWindows runnerではfake Hermesを使い、Builderの配置、wrapper生成、非対話setup、version実行までsmoke testします。公式Hermesを含むWindows完全E2Eではありません。
 
 ## Docker検証で発見・修正した問題
 
@@ -70,6 +71,10 @@ Hermes公式POSIX installerの`--commit`はcommit SHAを要求します。Builde
 ### tool policyの配列が文字列として保存されていた
 
 Hermes `config set`はJSON風文字列を配列へ変換しないため、旧方式では`agent.disabled_toolsets`が実効的なdenyになりませんでした。Hermes付属のPyYAMLを使う原子的更新へ変更し、plugin型gatewayにも明示allowlistを保存しました。Docker内で両方の型と値を直接検査しています。
+
+### 明示allowlistへHermes既定toolsetとMCPが加算されていた
+
+Hermesの`tools enable`は加算型であり、明示したtoolset以外にもdefault-on plugin、recovered toolset、global MCPが加わります。共有profileでは加算コマンドを廃止し、全platformを明示配列へ置換しました。さらにGatewayへ`no_mcp`を設定し、固定Hermesのregistryから許可外toolsetを完全denyします。Docker E2Eではdummy MCP追加後にHermes自身のresolverで実効集合の完全一致を検査します。
 
 ### GitHub rawの一時的なHTTP 429
 
@@ -93,7 +98,7 @@ Hermes `config set`はJSON風文字列を配列へ変換しないため、旧方
 - Hermes側のbrowser / web / ui-tui workspaceにnpm build-tool advisoryがあります。
 - 初回導入はffmpegとPlaywrightを含むため、数百MB規模のdownloadとdisk消費が発生します。
 - 認証情報を使わないDocker E2Eでは、LLM provider、Slack、Teams、LINE、その他gateway、MCPの実接続を検証していません。
-- Windows installerはsyntax CIのみで、完全E2Eは未実施です。
+- Windows installerはfake Hermesによるsmoke CIまでで、公式Hermesを含む完全E2Eは未実施です。
 
 ## Release判定
 

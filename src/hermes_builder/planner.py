@@ -6,6 +6,7 @@ from hermes_builder.models import Answers, BuildPlan, CommandSpec
 
 
 BASE_TOOLSETS = {"skills", "todo", "clarify"}
+SHARED_ACCESS_SCOPES = {"trusted_team", "public"}
 DANGEROUS_GATEWAY_TOOLSETS = {
     "terminal",
     "file",
@@ -51,6 +52,8 @@ def build_plan(answers: Answers) -> BuildPlan:
     else:
         notes.append("自分専用でもgateway利用者allowlistまたはDM pairingを必須にする。")
 
+    strict_shared_policy = answers.access_scope in SHARED_ACCESS_SCOPES
+
     if gateway_denied:
         # 共有gateway用profileではglobal denyがCLIにも効くため、summaryと実際の
         # effective toolsetsを一致させる。
@@ -82,12 +85,25 @@ def build_plan(answers: Answers) -> BuildPlan:
         config_values["agent.disabled_toolsets"] = sorted(gateway_denied)
         notes.append("共有用profileでは高権限toolsetをprofile全体で無効化する。")
 
-    # Hermes v2026.8.3の `hermes tools --platform` はbuilt-in platformだけを
-    # 受け付ける。plugin adapterはprofile configへ明示allowlistを書き、default
-    # toolsetの自動展開で意図しない権限が増えないようにする。
-    for gateway in answers.gateways:
-        if gateway not in TOOL_POLICY_PLATFORMS:
-            config_values[f"platform_toolsets.{gateway}"] = sorted(gateway_toolsets)
+    if strict_shared_policy:
+        # Hermesのtools enableは加算型で、default-on plugin・recovered toolset・
+        # global MCPを残す。共有profileでは全platformを構造化configで置換し、
+        # gatewayからMCPをfail-closedにする。executorがHermes registryを検査し、
+        # agent.disabled_toolsetsを既知toolset全体のdenyへ拡張する。
+        config_values["platform_toolsets.cli"] = sorted(cli_toolsets)
+        for gateway in answers.gateways:
+            config_values[f"platform_toolsets.{gateway}"] = sorted(
+                gateway_toolsets | {"no_mcp"}
+            )
+        notes.append(
+            "共有gatewayはHermes registryから実効allowlistを生成し、MCPを初期無効化する。"
+        )
+    else:
+        # Hermes v2026.8.3の `hermes tools --platform` はbuilt-in platformだけを
+        # 受け付ける。plugin adapterはprofile configへ明示allowlistを書く。
+        for gateway in answers.gateways:
+            if gateway not in TOOL_POLICY_PLATFORMS:
+                config_values[f"platform_toolsets.{gateway}"] = sorted(gateway_toolsets)
 
     profile = answers.profile_name
     commands = [
@@ -105,7 +121,7 @@ def build_plan(answers: Answers) -> BuildPlan:
                 ("hermes", "-p", profile, "config", "set", key, value),
             )
         )
-    if cli_toolsets:
+    if cli_toolsets and not strict_shared_policy:
         commands.append(
             CommandSpec(
                 "CLI toolsetsを有効化",
@@ -113,6 +129,9 @@ def build_plan(answers: Answers) -> BuildPlan:
             )
         )
     for gateway in answers.gateways:
+        if strict_shared_policy:
+            notes.append(f"{gateway}へ構造化allowlistとno_mcpを適用する。")
+            continue
         if gateway not in TOOL_POLICY_PLATFORMS:
             notes.append(
                 f"{gateway}はplugin adapterのため、configへ明示allowlistを適用する。"

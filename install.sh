@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="0.1.1"
+VERSION="0.1.2"
 DEFAULT_HERMES_REF="v2026.8.3"
 DEFAULT_HERMES_COMMIT="3c27eb6234bf91b8ceee9e9071591b31e9b148cb"
 HERMES_REF="${HERMES_REF:-$DEFAULT_HERMES_REF}"
 HERMES_COMMIT="${HERMES_COMMIT:-}"
 BUILDER_REPO="${HERMES_BUILDER_REPO:-kousoeie-beep/hermes-builder}"
-BUILDER_REF="${HERMES_BUILDER_REF:-v0.1.1}"
+BUILDER_REF="${HERMES_BUILDER_REF:-v0.1.2}"
 BUILDER_HOME="${HERMES_BUILDER_HOME:-$HOME/.local/share/hermes-builder}"
 BIN_DIR="${HERMES_BUILDER_BIN_DIR:-$HOME/.local/bin}"
 SOURCE_DIR=""
@@ -15,6 +15,10 @@ ANSWERS_FILE=""
 DRY_RUN=false
 SKIP_HERMES=false
 NON_INTERACTIVE=false
+SKIP_PROVIDER=false
+SKIP_GATEWAYS=false
+SKIP_MCP=false
+NO_SERVICE=false
 hermes_home="${HERMES_HOME:-$HOME/.hermes}"
 
 usage() {
@@ -29,6 +33,10 @@ Options:
   --source-dir PATH     Install Hermes Builder from a local checkout
   --answers PATH        Use an answers JSON file
   --non-interactive     Skip interactive provider/gateway/MCP steps
+  --skip-provider       Defer provider authentication
+  --skip-gateways       Defer gateway wizard/service/status steps
+  --skip-mcp            Defer MCP configuration
+  --no-service          Do not install or restart gateway services
   --hermes-ref REF      Pin Hermes to a tag or commit
   --hermes-commit SHA   Exact Hermes commit (resolved automatically when omitted)
   --builder-ref REF     Git ref for Hermes Builder
@@ -93,6 +101,10 @@ while [ "$#" -gt 0 ]; do
     --source-dir) require_option_value "$1" "${2:-}"; SOURCE_DIR="$2"; shift 2 ;;
     --answers) require_option_value "$1" "${2:-}"; ANSWERS_FILE="$2"; shift 2 ;;
     --non-interactive) NON_INTERACTIVE=true; shift ;;
+    --skip-provider) SKIP_PROVIDER=true; shift ;;
+    --skip-gateways) SKIP_GATEWAYS=true; shift ;;
+    --skip-mcp) SKIP_MCP=true; shift ;;
+    --no-service) NO_SERVICE=true; shift ;;
     --hermes-ref) require_option_value "$1" "${2:-}"; HERMES_REF="$2"; shift 2 ;;
     --hermes-commit) require_option_value "$1" "${2:-}"; HERMES_COMMIT="$2"; shift 2 ;;
     --builder-ref) require_option_value "$1" "${2:-}"; BUILDER_REF="$2"; shift 2 ;;
@@ -138,6 +150,10 @@ if [ "$DRY_RUN" = true ]; then
     args=(setup --dry-run --yes)
     if [ -n "$ANSWERS_FILE" ]; then args+=(--answers "$ANSWERS_FILE"); fi
     if [ "$NON_INTERACTIVE" = true ]; then args+=(--non-interactive); fi
+    if [ "$SKIP_PROVIDER" = true ]; then args+=(--skip-provider); fi
+    if [ "$SKIP_GATEWAYS" = true ]; then args+=(--skip-gateways); fi
+    if [ "$SKIP_MCP" = true ]; then args+=(--skip-mcp); fi
+    if [ "$NO_SERVICE" = true ]; then args+=(--no-service); fi
     PYTHONPATH="$SOURCE_DIR/src" python3 -m hermes_builder "${args[@]}"
   fi
   exit 0
@@ -212,6 +228,10 @@ log "✓ hermes-builder command: $wrapper"
 
 args=(setup --yes)
 if [ -n "$ANSWERS_FILE" ]; then args+=(--answers "$ANSWERS_FILE"); fi
+if [ "$SKIP_PROVIDER" = true ]; then args+=(--skip-provider); fi
+if [ "$SKIP_GATEWAYS" = true ]; then args+=(--skip-gateways); fi
+if [ "$SKIP_MCP" = true ]; then args+=(--skip-mcp); fi
+if [ "$NO_SERVICE" = true ]; then args+=(--no-service); fi
 if [ "$NON_INTERACTIVE" = true ]; then
   args+=(--non-interactive)
   "$wrapper" "${args[@]}"

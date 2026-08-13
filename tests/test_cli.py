@@ -32,7 +32,7 @@ class CliTest(unittest.TestCase):
     def test_version(self) -> None:
         result = self.run_cli("--version")
         self.assertEqual(result.returncode, 0)
-        self.assertIn("0.1.1", result.stdout)
+        self.assertIn("0.1.2", result.stdout)
 
     def test_noninteractive_plan_and_dry_run(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

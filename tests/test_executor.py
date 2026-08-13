@@ -96,6 +96,69 @@ class ExecutorTest(unittest.TestCase):
             if os.name != "nt":
                 self.assertEqual(stat.S_IMODE(config_path.stat().st_mode), 0o600)
 
+    def test_strict_policy_denies_every_registry_toolset_not_allowed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            profile_home = root / "profiles" / "public-agent"
+            profile_home.mkdir(parents=True)
+            fake_yaml = types.SimpleNamespace(
+                YAMLError=ValueError,
+                safe_load=lambda handle: json.load(handle),
+                safe_dump=lambda value, **_kwargs: json.dumps(value),
+            )
+            toolsets_module = types.ModuleType("toolsets")
+            toolsets_module.TOOLSETS = {
+                "web": {"tools": ["web_search"]},
+                "kanban": {"tools": ["kanban"]},
+                "hermes-cli": {"tools": [], "includes": ["web"]},
+                "coding": {"tools": [], "posture": True},
+            }
+            hermes_cli_module = types.ModuleType("hermes_cli")
+            hermes_cli_module.__path__ = []  # type: ignore[attr-defined]
+            plugins_module = types.ModuleType("hermes_cli.plugins")
+            plugins_module.discover_plugins = Mock()
+            plugins_module.get_plugin_toolsets = Mock(
+                return_value=[("image_gen", "Image", "Generate images")]
+            )
+            tools_config_module = types.ModuleType("hermes_cli.tools_config")
+            tools_config_module.CONFIGURABLE_TOOLSETS = [
+                ("clarify", "Clarify", "Ask"),
+                ("terminal", "Terminal", "Run"),
+                ("web", "Web", "Search"),
+            ]
+            modules = {
+                "yaml": fake_yaml,
+                "toolsets": toolsets_module,
+                "hermes_cli": hermes_cli_module,
+                "hermes_cli.plugins": plugins_module,
+                "hermes_cli.tools_config": tools_config_module,
+            }
+            with (
+                patch.dict(os.environ, {"HERMES_HOME": str(root)}, clear=False),
+                patch.dict(sys.modules, modules),
+            ):
+                _write_structured_config(
+                    "public-agent",
+                    {
+                        "agent.disabled_toolsets": ["terminal"],
+                        "platform_toolsets.slack": ["clarify", "no_mcp", "web"],
+                    },
+                    dry_run=False,
+                    strict_allowed_toolsets=["clarify", "web"],
+                )
+
+            saved = json.loads(
+                (profile_home / "config.yaml").read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                saved["agent"]["disabled_toolsets"],
+                ["image_gen", "kanban", "terminal"],
+            )
+            self.assertEqual(
+                saved["platform_toolsets"]["slack"],
+                ["clarify", "no_mcp", "web"],
+            )
+
     def test_required_security_audit_failure_stops_apply(self) -> None:
         command = CommandSpec(
             "依存関係をsecurity audit",
@@ -108,7 +171,7 @@ class ExecutorTest(unittest.TestCase):
         ):
             _run(command, dry_run=False)
 
-    def test_skip_gateways_omits_plugin_policy_but_keeps_global_deny(self) -> None:
+    def test_skip_gateways_keeps_all_safety_policy(self) -> None:
         plan = build_plan(
             Answers(
                 profile_name="team-agent",
@@ -130,7 +193,13 @@ class ExecutorTest(unittest.TestCase):
 
         saved_values = writer.call_args.args[1]
         self.assertIn("agent.disabled_toolsets", saved_values)
-        self.assertNotIn("platform_toolsets.teams", saved_values)
+        self.assertIn("platform_toolsets.cli", saved_values)
+        self.assertIn("platform_toolsets.teams", saved_values)
+        self.assertIn("no_mcp", saved_values["platform_toolsets.teams"])
+        self.assertEqual(
+            writer.call_args.kwargs["strict_allowed_toolsets"],
+            plan.gateway_toolsets,
+        )
 
     def test_structured_config_fails_closed_without_hermes_yaml(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -62,3 +62,43 @@ jobs:
       - name: Installer dry run
         shell: pwsh
         run: ./install.ps1 -DryRun
+      - name: Windows installer smoke
+        shell: pwsh
+        run: |
+          $testRoot = Join-Path $env:RUNNER_TEMP "hermes-builder-smoke"
+          $env:HERMES_HOME = Join-Path $testRoot "hermes"
+          $env:HERMES_BUILDER_HOME = Join-Path $testRoot "builder"
+          $env:HERMES_BUILDER_BIN_DIR = Join-Path $testRoot "builder-bin"
+          $fakeBin = Join-Path $testRoot "bin"
+          New-Item -ItemType Directory -Force -Path $fakeBin | Out-Null
+          @'
+          @echo off
+          if "%1 %2"=="profile show" exit /b 1
+          exit /b 0
+          '@ | Set-Content -Encoding ascii (Join-Path $fakeBin "hermes.cmd")
+          $env:Path = "$fakeBin;$env:Path"
+          $answers = Join-Path $testRoot "answers.json"
+          @'
+          {
+            "profile_name": "windows-smoke",
+            "display_name": "Windows Smoke",
+            "purpose": "Windows installer smoke test",
+            "use_cases": ["personal_assistant"],
+            "autonomy": "interactive",
+            "access_scope": "owner",
+            "deployment": "laptop",
+            "gateways": [],
+            "integrations": []
+          }
+          '@ | Set-Content -Encoding utf8 $answers
+          ./install.ps1 -SkipHermes -NonInteractive -Answers $answers -SourceDir $env:GITHUB_WORKSPACE
+          & (Join-Path $env:HERMES_BUILDER_BIN_DIR "hermes-builder.cmd") --version
+
+  full-install:
+    name: Official Hermes full install
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install pinned Hermes and apply Builder twice
+        run: bash tests/docker/full_install.sh

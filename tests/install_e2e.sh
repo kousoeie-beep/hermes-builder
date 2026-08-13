@@ -42,8 +42,9 @@ run_installer() {
   bash "$project_root/install.sh" \
     --skip-hermes \
     --source-dir "$project_root" \
-    --answers "$project_root/examples/research-operator.json" \
-    --non-interactive
+    --answers "$project_root/tests/fixtures/owner-local.json" \
+    --non-interactive \
+    --skip-gateways
 }
 
 run_installer
@@ -51,11 +52,11 @@ run_installer
 run_installer
 
 test -x "$HERMES_BUILDER_BIN_DIR/hermes-builder"
-test -f "$HERMES_HOME/profiles/research-operator/SOUL.md"
-test -f "$HOME/.config/hermes-builder/plans/research-operator.json"
+test -f "$HERMES_HOME/profiles/local-operator/SOUL.md"
+test -f "$HOME/.config/hermes-builder/plans/local-operator.json"
 test "$(find "$HOME" -maxdepth 1 -type d -name 'builder.backup.*' | wc -l | tr -d ' ')" -ge 2
-grep -q "profile create research-operator" "$HERMES_FAKE_LOG"
-grep -q -- "-p research-operator doctor" "$HERMES_FAKE_LOG"
+grep -q "profile create local-operator" "$HERMES_FAKE_LOG"
+grep -q -- "-p local-operator doctor" "$HERMES_FAKE_LOG"
 if grep -q "gateway install" "$HERMES_FAKE_LOG"; then
   echo "gateway service must wait for interactive authentication" >&2
   exit 1

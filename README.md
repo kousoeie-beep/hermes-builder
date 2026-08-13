@@ -4,20 +4,20 @@
 
 Hermes本体の導入だけでなく、専用profile、SOUL、toolsets、gateway、MCP、安全設定、常駐化、疎通確認までを1本のフローにまとめます。
 
-> 現在のreleaseはv0.1.1です。installerとBuilder本体を同じtagへ固定しています。
+> 現在のreleaseはv0.1.2です。installerとBuilder本体を同じtagへ固定しています。
 
 ## Quick start
 
 macOS / Linux / WSL2:
 
 ```bash
-curl -fsSL --retry 5 --retry-delay 2 https://raw.githubusercontent.com/kousoeie-beep/hermes-builder/v0.1.1/install.sh | bash
+curl -fsSL --retry 5 --retry-delay 2 https://raw.githubusercontent.com/kousoeie-beep/hermes-builder/v0.1.2/install.sh | bash
 ```
 
 Windows PowerShell:
 
 ```powershell
-iex (irm https://raw.githubusercontent.com/kousoeie-beep/hermes-builder/v0.1.1/install.ps1)
+iex (irm https://raw.githubusercontent.com/kousoeie-beep/hermes-builder/v0.1.2/install.ps1)
 ```
 
 実行すると、次の順番で進みます。
@@ -86,7 +86,7 @@ Hermes Builderは、Hermes Gatewayが提供する複数platformを選択・構�
 
 Builderは必要なplatformだけを選ばせ、公式設定画面を起動し、最後に接続状態を検証します。
 
-Hermes `v2026.8.3`で一部の新しいgatewayはplugin adapterです。この場合もgateway自体の設定は公式wizardへ渡します。Builderはplugin adapterの`platform_toolsets`へ明示allowlistを配列として保存し、チーム・外部向けprofileでは`agent.disabled_toolsets`もprofile全体へ適用します。設定はHermes付属の安全なYAML loaderで原子的に更新し、配列を文字列として誤保存しません。
+Hermes `v2026.8.3`で一部の新しいgatewayはplugin adapterです。この場合もgateway自体の設定は公式wizardへ渡します。チーム・外部向けprofileでは、built-in/pluginを問わずCLIと全gatewayの`platform_toolsets`を明示配列へ置換します。Gatewayには`no_mcp`を付け、Hermes実行環境のregistryを列挙して許可外toolsetを`agent.disabled_toolsets`へ適用します。registryを検査できなければセットアップを停止します。設定はHermes付属の安全なYAML loaderで原子的に更新し、配列を文字列として誤保存しません。
 
 ## Safety defaults
 
@@ -101,6 +101,7 @@ Hermes `v2026.8.3`で一部の新しいgatewayはplugin adapterです。この�
 - チームgatewayではterminal、file、code execution、computer use、cron、delegationを初期無効化
 - 外部ユーザーgatewayではmemory、session search、browserも初期無効化
 - チーム・外部向けは専用profile全体へ同じdenyを適用（CLIも制限対象）
+- チーム・外部向けgatewayではMCPを初期無効化し、認証後に用途別で明示許可
 - 既存profileのSOULは既定で上書きせず、`SOUL.proposed.md`へ保存
 
 ## CLI
@@ -153,6 +154,8 @@ hermes-builder setup --skip-mcp
 hermes-builder setup --no-service
 ```
 
+`--skip-gateways`は認証wizard、service操作、疎通確認だけを後回しにします。既に稼働中のgatewayから権限が漏れないよう、allowlist、`no_mcp`、global denyなどの安全policyは常に適用します。
+
 ### Completion
 
 ```bash
@@ -188,8 +191,11 @@ API keyやtokenに見えるfieldが含まれている場合、Builderは回答�
 ```bash
 bash install.sh --help
 bash install.sh --dry-run --source-dir "$PWD" \
-  --answers examples/research-operator.json --non-interactive
+  --answers examples/research-operator.json --non-interactive \
+  --skip-gateways
 ```
+
+`install.sh`と`install.ps1`は、`--skip-provider` / `-SkipProvider`、`--skip-gateways` / `-SkipGateways`、`--skip-mcp` / `-SkipMcp`、`--no-service` / `-NoService`をBuilder本体へ引き渡します。安全policyは`--skip-gateways`でも適用されます。
 
 Environment variables:
 
@@ -198,12 +204,12 @@ Environment variables:
 | `HERMES_REF` | `v2026.8.3` | Hermesのtag/commit pin |
 | `HERMES_COMMIT` | releaseの固定SHA | Hermesの厳密なcommit pin |
 | `HERMES_BUILDER_REPO` | `kousoeie-beep/hermes-builder` | Builder repository |
-| `HERMES_BUILDER_REF` | `v0.1.1` | Builder branch/tag |
+| `HERMES_BUILDER_REF` | `v0.1.2` | Builder branch/tag |
 | `HERMES_BUILDER_HOME` | `~/.local/share/hermes-builder` | Builder install先 |
 | `HERMES_BUILDER_STATE_HOME` | `~/.config/hermes-builder` | plan等のstate保存先 |
 | `HERMES_BUILDER_BIN_DIR` | `~/.local/bin` | command install先 |
 
-installer自身と、そこから取得するBuilder本体を同じ`v0.1.1` tagへ固定しています。更新時は新しいrelease tagを発行し、両方を同時に切り替えます。
+installer自身と、そこから取得するBuilder本体を同じ`v0.1.2` tagへ固定しています。更新時は新しいrelease tagを発行し、両方を同時に切り替えます。
 
 Hermes本体は`v2026.8.3`のrelease commit `3c27eb6234bf91b8ceee9e9071591b31e9b148cb`へ固定します。POSIX版とPowerShell版の両方が公式installer自体を40文字のcommit SHAから取得し、そのSHAを公式installerへ渡します。そのため、同じtagが将来別のcommitを指しても導入内容は変わりません。別versionで`HERMES_COMMIT`を省略した場合は、`HERMES_REF`をGitHub APIでcommit SHAへ解決します。厳密な再現性が必要なら両方を対で指定してください。
 
@@ -249,7 +255,7 @@ macOS、WSL2、WindowsはCI定義を用意していますが、この時点で�
 
 ## Current scope
 
-v0.1.1で行うこと:
+v0.1.2で行うこと:
 
 - macOS / Linux / WSL2 / Windows installer
 - 決定論的ヒアリングとplan生成
